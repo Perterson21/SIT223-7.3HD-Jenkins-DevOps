@@ -4,8 +4,11 @@ pipeline {
     stages {
         stage('Build') {
             steps {
+                echo 'Checking Docker...'
+                bat '"C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" --version'
+
                 echo 'Building SIT223 Docker image...'
-                bat 'docker build -t sit223-goof:%BUILD_NUMBER% .'
+                bat '"C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" build -t sit223-goof:%BUILD_NUMBER% .'
             }
         }
     }
