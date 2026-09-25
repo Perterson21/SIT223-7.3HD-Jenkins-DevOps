@@ -112,5 +112,69 @@ pipeline {
                 '''
             }
         }
+
+        stage('Monitoring') {
+            steps {
+                echo 'Starting production monitoring with Uptime Kuma...'
+
+                bat '''
+                "C:\\Users\\CAT VIET\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin\\docker.exe" inspect uptime-kuma >NUL 2>&1 || ^
+                "C:\\Users\\CAT VIET\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin\\docker.exe" run -d ^
+                --restart unless-stopped ^
+                --name uptime-kuma ^
+                -p 3004:3001 ^
+                -v uptime-kuma:/app/data ^
+                louislam/uptime-kuma:1
+                '''
+
+                bat '''
+                "C:\\Users\\CAT VIET\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin\\docker.exe" start uptime-kuma >NUL 2>&1 || echo Uptime Kuma already running
+                '''
+
+                powershell '''
+                Write-Host "Checking production application..."
+
+                $prod = Invoke-WebRequest -UseBasicParsing http://localhost:3003
+                Write-Host "Monitoring check - Production HTTP Status:" $prod.StatusCode
+
+                if ($prod.StatusCode -ne 200) {
+                    Write-Host "ALERT: Production application is unavailable"
+                    exit 1
+                }
+
+                Write-Host "Production application is healthy."
+                '''
+
+                powershell '''
+                Write-Host "Waiting for Uptime Kuma monitoring dashboard..."
+
+                $success = $false
+
+                for ($i = 1; $i -le 12; $i++) {
+                    try {
+                        $monitor = Invoke-WebRequest -UseBasicParsing http://localhost:3004
+
+                        if ($monitor.StatusCode -eq 200) {
+                            Write-Host "Uptime Kuma HTTP Status:" $monitor.StatusCode
+                            $success = $true
+                            break
+                        }
+                    }
+                    catch {
+                        Write-Host "Waiting for monitoring service..."
+                    }
+
+                    Start-Sleep -Seconds 5
+                }
+
+                if (-not $success) {
+                    Write-Host "Monitoring service did not start successfully."
+                    exit 1
+                }
+
+                Write-Host "Monitoring service is running successfully."
+                '''
+            }
+        }
     }
 }
