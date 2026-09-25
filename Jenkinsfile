@@ -78,5 +78,39 @@ pipeline {
                 '''
             }
         }
+
+        stage('Release') {
+            steps {
+                echo 'Promoting tested image to production release...'
+
+                bat '''
+                "C:\\Users\\CAT VIET\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin\\docker.exe" tag sit223-goof:%BUILD_NUMBER% sit223-goof:release-%BUILD_NUMBER%
+                '''
+
+                bat '''
+                "C:\\Users\\CAT VIET\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin\\docker.exe" rm -f sit223-production 2>NUL || echo No existing production container
+                '''
+
+                bat '''
+                "C:\\Users\\CAT VIET\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin\\docker.exe" run -d ^
+                --name sit223-production ^
+                --network nodejs-goof_default ^
+                -e DOCKER=1 ^
+                -p 3003:3001 ^
+                sit223-goof:release-%BUILD_NUMBER%
+                '''
+
+                powershell 'Start-Sleep -Seconds 8'
+
+                powershell '''
+                $response = Invoke-WebRequest -UseBasicParsing http://localhost:3003
+                Write-Host "Production HTTP Status:" $response.StatusCode
+
+                if ($response.StatusCode -ne 200) {
+                    exit 1
+                }
+                '''
+            }
+        }
     }
 }
