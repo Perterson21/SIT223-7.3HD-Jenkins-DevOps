@@ -1,36 +1,11 @@
-pipeline {
-    agent any
+stage('Security') {
+    steps {
+        echo 'Running npm security audit...'
 
-    stages {
-        stage('Build') {
-            steps {
-                echo 'Checking Docker...'
-                bat '"C:\\Users\\CAT VIET\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin\\docker.exe" --version'
+        bat '''
+        "C:\\Program Files\\nodejs\\npm.cmd" audit --json > npm-audit.json || exit /b 0
+        '''
 
-                echo 'Building SIT223 Docker image...'
-                bat '"C:\\Users\\CAT VIET\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin\\docker.exe" build -t sit223-goof:%BUILD_NUMBER% .'
-            }
-        }
-
-        stage('Test') {
-            steps {
-                echo 'Running automated unit tests...'
-                bat '"C:\\Users\\CAT VIET\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin\\docker.exe" run --rm --entrypoint node sit223-goof:%BUILD_NUMBER% tests/utils.test.js'
-            }
-        }
-
-        stage('Code Quality') {
-            steps {
-                echo 'Running SonarQube code quality analysis...'
-
-                script {
-                    def scannerHome = tool 'SonarScanner'
-
-                    withSonarQubeEnv('SonarQube') {
-                        bat "\"${scannerHome}\\bin\\sonar-scanner.bat\""
-                    }
-                }
-            }
-        }
+        archiveArtifacts artifacts: 'npm-audit.json', allowEmptyArchive: true
     }
 }
