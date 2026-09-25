@@ -117,28 +117,41 @@ pipeline {
             steps {
                 echo 'Starting production monitoring with Uptime Kuma...'
 
-                bat '''
-                "C:\\Users\\CAT VIET\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin\\docker.exe" inspect uptime-kuma >NUL 2>&1 || ^
-                "C:\\Users\\CAT VIET\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin\\docker.exe" run -d ^
-                --restart unless-stopped ^
-                --name uptime-kuma ^
-                -p 3004:3001 ^
-                -v uptime-kuma:/app/data ^
-                louislam/uptime-kuma:1
-                '''
+                powershell '''
+                $docker = "C:\\Users\\CAT VIET\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin\\docker.exe"
 
-                bat '''
-                "C:\\Users\\CAT VIET\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin\\docker.exe" start uptime-kuma >NUL 2>&1 || echo Uptime Kuma already running
+                $existing = & $docker ps -a --filter "name=uptime-kuma" --format "{{.Names}}"
+
+                if ($existing -contains "uptime-kuma") {
+                    Write-Host "Uptime Kuma container already exists."
+                    & $docker start uptime-kuma
+                }
+                else {
+                    Write-Host "Creating Uptime Kuma container..."
+
+                    & $docker run -d `
+                        --restart unless-stopped `
+                        --name uptime-kuma `
+                        -p 3004:3001 `
+                        -v uptime-kuma:/app/data `
+                        louislam/uptime-kuma:1
+                }
+
+                if ($LASTEXITCODE -ne 0) {
+                    Write-Host "Failed to start Uptime Kuma."
+                    exit 1
+                }
                 '''
 
                 powershell '''
                 Write-Host "Checking production application..."
 
                 $prod = Invoke-WebRequest -UseBasicParsing http://localhost:3003
+
                 Write-Host "Monitoring check - Production HTTP Status:" $prod.StatusCode
 
                 if ($prod.StatusCode -ne 200) {
-                    Write-Host "ALERT: Production application is unavailable"
+                    Write-Host "ALERT: Production application is unavailable."
                     exit 1
                 }
 
@@ -146,29 +159,29 @@ pipeline {
                 '''
 
                 powershell '''
-                Write-Host "Waiting for Uptime Kuma monitoring dashboard..."
+                Write-Host "Waiting for Uptime Kuma dashboard..."
 
-                $success = $false
+                $ready = $false
 
                 for ($i = 1; $i -le 12; $i++) {
                     try {
-                        $monitor = Invoke-WebRequest -UseBasicParsing http://localhost:3004
+                        $response = Invoke-WebRequest -UseBasicParsing http://localhost:3004
 
-                        if ($monitor.StatusCode -eq 200) {
-                            Write-Host "Uptime Kuma HTTP Status:" $monitor.StatusCode
-                            $success = $true
+                        if ($response.StatusCode -eq 200) {
+                            Write-Host "Uptime Kuma HTTP Status:" $response.StatusCode
+                            $ready = $true
                             break
                         }
                     }
                     catch {
-                        Write-Host "Waiting for monitoring service..."
+                        Write-Host "Uptime Kuma is still starting..."
                     }
 
                     Start-Sleep -Seconds 5
                 }
 
-                if (-not $success) {
-                    Write-Host "Monitoring service did not start successfully."
+                if (-not $ready) {
+                    Write-Host "Uptime Kuma did not become ready."
                     exit 1
                 }
 
