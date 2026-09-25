@@ -1,4 +1,5 @@
 version: "2"
+
 services:
   goof:
     build: .
@@ -12,11 +13,13 @@ services:
       - goof-mongo
     depends_on:
       - goof-mongo
+
   goof-mongo:
     container_name: goof-mongo
     image: mongo:3
     ports:
       - "27017:27017"
+
   good-mysql:
     container_name: goof-mysql
     image: mysql:5
@@ -24,4 +27,4 @@ services:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: acme
     ports:
-      - "3306:3306"
+      - "3307:3306"
