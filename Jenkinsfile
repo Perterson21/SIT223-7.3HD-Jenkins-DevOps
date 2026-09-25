@@ -66,7 +66,7 @@ pipeline {
                 sit223-goof:%BUILD_NUMBER%
                 '''
 
-                bat 'timeout /t 8 /nobreak >NUL'
+                powershell 'Start-Sleep -Seconds 8'
 
                 powershell '''
                 $response = Invoke-WebRequest -UseBasicParsing http://localhost:3002
