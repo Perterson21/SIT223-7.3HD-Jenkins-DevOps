@@ -1,6 +1,10 @@
 pipeline {
     agent any
 
+    tools {
+        sonarQube 'SonarScanner'
+    }
+
     stages {
         stage('Build') {
             steps {
@@ -15,8 +19,17 @@ pipeline {
         stage('Test') {
             steps {
                 echo 'Running automated unit tests...'
-
                 bat '"C:\\Users\\CAT VIET\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin\\docker.exe" run --rm --entrypoint node sit223-goof:%BUILD_NUMBER% tests/utils.test.js'
+            }
+        }
+
+        stage('Code Quality') {
+            steps {
+                echo 'Running SonarQube code quality analysis...'
+
+                withSonarQubeEnv('SonarQube') {
+                    bat 'sonar-scanner'
+                }
             }
         }
     }
